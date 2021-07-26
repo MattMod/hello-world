@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Name of version  (ie 5.5.0)'
+        required: true
+      branchName:
+        description: 'Name of branch to deploy'
+        required: true
+#      destinationEnv:
+#        description: 'Name of destination Branch'
+#        required: true
+        
+jobs:
+  DeployXOffice:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+           with:
+             lfs: 'true'
+      - name: Deploy with PowerShell
+        shell: pwsh
+        run: .\bat_scripts\setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
+      
+  DeployXStore:
+    runs-on: ubuntu-latest
+    needs: DeployXOffice
+    
+    steps:
+      - uses: actions/checkout@v2
+         with:
+           lfs: 'true'
+      - name: Deploy with PowerShell
+        shell: pwsh
+        run: .\bat_scripts\setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
+      - name: XUnit Test with PowerShell
+        shell: pwsh
+        run: .\bat_scripts\xunit_test.bat # "./bat_scripts/test.bat" also can work
