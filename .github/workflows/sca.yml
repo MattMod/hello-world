@@ -1,4 +1,4 @@
-name: Static Code Analisys
+name: CI - Static Code Analisys
 on:
   push:
     branches:
