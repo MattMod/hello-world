@@ -1,0 +1,121 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Name of version  (ie 5.5.0)'
+        required: true
+      branchName:
+        description: 'Name of branch to deploy'
+        required: true
+#      destinationEnv:
+#        description: 'Name of destination Branch'
+#        required: true
+        
+jobs:
+  #DEPLOY XOFFICE
+  DeployXOffice:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+           with:
+             lfs: 'true'
+      - name: Deploy with PowerShell
+        shell: pwsh
+        run: .\bat_scripts\setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
+  
+  #DEPLOY XSTORE
+  DatabaseInstallation:
+    runs-on: ubuntu-latest
+    needs: DeployXOffice
+    
+    steps:
+      - uses: actions/checkout@v2
+         with:
+           lfs: 'true'
+      - run: cd "Oracle Database install directory"
+      - name: Database Installation
+        run: setup.exe -silent -responseFile C:/APP/Xstore_DB1201.rsp -ignorePrereq -ignorePrereq -J "-Doracle.install.db.validate.supportedOSCheck=false"
+      
+  XStorePOSInstallation:
+    runs-on: ubuntu-latest
+    needs: DatabaseInstallation
+    
+    steps:
+      - name: XStore POS Installation
+        shell: pwsh
+        run: .\bat_scripts\primo.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  XServicesInstallation:
+    runs-on: ubuntu-latest
+    needs: XStorePOSInstallation
+    
+    steps:
+      - name: XServices Installation
+        shell: pwsh
+        run: .\bat_scripts\secondo.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  XenvironmentInstallation:
+    runs-on: ubuntu-latest
+    needs: XServicesInstallation
+    
+    steps:
+      - name: Xenvironment Installation
+        shell: pwsh
+        run: .\bat_scripts\terzo.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  EFTLinkInstallation:
+    runs-on: ubuntu-latest
+    needs: XenvironmentInstallation
+    
+    steps:
+      - name: EFTLink Installation
+        shell: pwsh
+        run: .\bat_scripts\quarto.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  MNTLoad:
+    runs-on: ubuntu-latest
+    needs: EFTLinkInstallation
+    
+    steps:
+      - name: MNT Load
+        shell: pwsh
+        run: .\bat_scripts\quinto.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  XStoreConfChange:
+     runs-on: ubuntu-latest
+     needs: MNTLoad
+    
+     steps:
+      - name: XStore Configuration Change
+        shell: pwsh
+        run: .\bat_scripts\sesto.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  XStoreMobileInstallation:
+      runs-on: ubuntu-latest
+      needs: XStoreConfChange
+    
+      steps:
+        - name: XMobile Installation
+          shell: pwsh
+          run: .\bat_scripts\settimo.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        
+  PostConfigurationStep:
+      runs-on: ubuntu-latest
+      needs: XStoreMobileInstallation
+    
+      steps:
+        - name: Post Configuration Step
+          shell: pwsh
+          run: .\bat_scripts\ottavo.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+  
+  XUnitTest:
+      runs-on: ubuntu-latest
+      needs: PostConfigurationStep
+      
+      steps:
+        - name: XUnit Test with PowerShell
+          shell: pwsh
+          run: .\bat_scripts\xunit_test.bat # "./bat_scripts/test.bat" also can work
