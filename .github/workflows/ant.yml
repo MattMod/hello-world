@@ -1,25 +1,40 @@
 # This workflow will build a Java project with Ant
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-ant
 
-name: Java CI
+name: CI - Build with Ant
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Name of version  (ie 5.5.0)'
+        required: true
 
 jobs:
   build:
-
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        lfs: 'true'
+    - name: Extract some files
+      run: 7z x ./amp_zip-release/release_20.0.0.0.566.7z -o./../../../releases/20.0.0.0.566
     - name: Set up JDK 11
       uses: actions/setup-java@v2
       with:
         java-version: '11'
         distribution: 'adopt'
     - name: Build with Ant
-      run: ant -noinput -buildfile build.xml
+      run: ant -f amp/jenkins-build.xml distribution
+    - uses: bhowell2/github-substring-action@v1
+      id: branch
+      with:
+        value: "${{GITHUB.REF}}"
+        index_of_str: "refs/heads/"
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v2
+      with:
+        name: XStore_${{ steps.branch.outputs.substring }}_${{ github.event.inputs.versionName }}
+        path: /home/runner/work/Symphony-OracleXStore/Symphony-OracleXStore/distro-full/*.zip
