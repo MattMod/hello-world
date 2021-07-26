@@ -20,8 +20,8 @@ jobs:
     
     steps:
       - uses: actions/checkout@v2
-           with:
-             lfs: 'true'
+        with:
+          lfs: 'true'
       - name: Deploy with PowerShell
         shell: pwsh
         run: .\bat_scripts\setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
@@ -32,9 +32,6 @@ jobs:
     needs: DeployXOffice
     
     steps:
-      - uses: actions/checkout@v2
-         with:
-           lfs: 'true'
       - run: cd "Oracle Database install directory"
       - name: Database Installation
         run: setup.exe -silent -responseFile C:/APP/Xstore_DB1201.rsp -ignorePrereq -ignorePrereq -J "-Doracle.install.db.validate.supportedOSCheck=false"
