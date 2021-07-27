@@ -44,8 +44,9 @@ jobs:
       - name: XStore POS Installation
         shell: pwsh
         run: pwd
-      - run: cd ${{ github.workspace }}
-      - run: ./bat_scripts/prova_steps.bat
+      - run: |
+              cd ${{ github.workspace }}
+              ./bat_scripts/prova_steps.bat
         
   XServicesInstallation:
     runs-on: windows-latest
