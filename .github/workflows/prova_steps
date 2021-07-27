@@ -1,0 +1,118 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Name of version  (ie 5.5.0)'
+        required: true
+      branchName:
+        description: 'Name of branch to deploy'
+        required: true
+#      destinationEnv:
+#        description: 'Name of destination Branch'
+#        required: true
+        
+jobs:
+  #DEPLOY XOFFICE
+  DeployXOffice:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+      - name: Deploy with PowerShell
+        shell: pwsh
+        run: echo ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+  
+  #DEPLOY XSTORE
+  DatabaseInstallation:
+    runs-on: ubuntu-latest
+    needs: DeployXOffice
+    
+    steps:
+      - run: echo "cambio directory in Oracle Database install directory"
+      - name: Database Installation
+        run: echo "eseguo setup DB"
+      
+  XStorePOSInstallation:
+    runs-on: ubuntu-latest
+    needs: DatabaseInstallation
+    
+    steps:
+      - name: XStore POS Installation
+        shell: pwsh
+        run: echo "primo bat"
+        
+  XServicesInstallation:
+    runs-on: ubuntu-latest
+    needs: XStorePOSInstallation
+    
+    steps:
+      - name: XServices Installation
+        shell: pwsh
+        run: echo "secondo bat"
+        
+  XenvironmentInstallation:
+    runs-on: ubuntu-latest
+    needs: XServicesInstallation
+    
+    steps:
+      - name: Xenvironment Installation
+        shell: pwsh
+        run: echo "terzo bat"
+        
+  EFTLinkInstallation:
+    runs-on: ubuntu-latest
+    needs: XenvironmentInstallation
+    
+    steps:
+      - name: EFTLink Installation
+        shell: pwsh
+        run: echo "quarto bat"
+        
+  MNTLoad:
+    runs-on: ubuntu-latest
+    needs: EFTLinkInstallation
+    
+    steps:
+      - name: MNT Load
+        shell: pwsh
+        run: echo "quinto bat"
+        
+  XStoreConfChange:
+     runs-on: ubuntu-latest
+     needs: MNTLoad
+    
+     steps:
+      - name: XStore Configuration Change
+        shell: pwsh
+        run: echo "sesto bat"
+        
+  XStoreMobileInstallation:
+      runs-on: ubuntu-latest
+      needs: XStoreConfChange
+    
+      steps:
+        - name: XMobile Installation
+          shell: pwsh
+          run: echo "settimo bat"
+        
+  PostConfigurationStep:
+      runs-on: ubuntu-latest
+      needs: XStoreMobileInstallation
+    
+      steps:
+        - name: Post Configuration Step
+          shell: pwsh
+          run: echo "ottavo bat"
+  
+  XUnitTest:
+      runs-on: ubuntu-latest
+      needs: PostConfigurationStep
+      
+      steps:
+        - name: XUnit Test with PowerShell
+          shell: pwsh
+          run: echo "xunit bat"
