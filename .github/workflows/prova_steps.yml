@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: XStore POS Installation
         shell: pwsh
-        run: bat_scripts/prova_steps.bat
+        run: ./bat_scripts/prova_steps.bat
         
   XServicesInstallation:
     runs-on: ubuntu-latest
