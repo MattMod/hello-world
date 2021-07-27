@@ -16,7 +16,7 @@ on:
 jobs:
   #DEPLOY XOFFICE
   DeployXOffice:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     
     steps:
       - uses: actions/checkout@v2
@@ -28,7 +28,7 @@ jobs:
   
   #DEPLOY XSTORE
   DatabaseInstallation:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: DeployXOffice
     
     steps:
@@ -37,7 +37,7 @@ jobs:
         run: echo "eseguo setup DB"
       
   XStorePOSInstallation:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: DatabaseInstallation
     
     steps:
@@ -48,7 +48,7 @@ jobs:
       - run: ./bat_scripts/prova_steps.bat
         
   XServicesInstallation:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: XStorePOSInstallation
     
     steps:
@@ -57,7 +57,7 @@ jobs:
         run: echo "secondo bat"
         
   XenvironmentInstallation:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: XServicesInstallation
     
     steps:
@@ -66,7 +66,7 @@ jobs:
         run: echo "terzo bat"
         
   EFTLinkInstallation:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: XenvironmentInstallation
     
     steps:
@@ -75,7 +75,7 @@ jobs:
         run: echo "quarto bat"
         
   MNTLoad:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: EFTLinkInstallation
     
     steps:
@@ -84,7 +84,7 @@ jobs:
         run: echo "quinto bat"
         
   XStoreConfChange:
-     runs-on: ubuntu-latest
+     runs-on: windows-latest
      needs: MNTLoad
     
      steps:
@@ -93,7 +93,7 @@ jobs:
         run: echo "sesto bat"
         
   XStoreMobileInstallation:
-      runs-on: ubuntu-latest
+      runs-on: windows-latest
       needs: XStoreConfChange
     
       steps:
@@ -102,7 +102,7 @@ jobs:
           run: echo "settimo bat"
         
   PostConfigurationStep:
-      runs-on: ubuntu-latest
+      runs-on: windows-latest
       needs: XStoreMobileInstallation
     
       steps:
@@ -111,7 +111,7 @@ jobs:
           run: echo "ottavo bat"
   
   XUnitTest:
-      runs-on: ubuntu-latest
+      runs-on: windows-latest
       needs: PostConfigurationStep
       
       steps:
