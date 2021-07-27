@@ -45,8 +45,7 @@ jobs:
         shell: pwsh
         run: pwd
       - run: cd ${{ github.workspace }}
-      - run: pwd
-      - run: prova_steps.bat
+      - run: ./bat_scripts/prova_steps.bat
         
   XServicesInstallation:
     runs-on: ubuntu-latest
