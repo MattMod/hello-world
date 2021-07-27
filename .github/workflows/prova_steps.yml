@@ -43,7 +43,10 @@ jobs:
     steps:
       - name: XStore POS Installation
         shell: pwsh
-        run: cd ./bat_scripts
+        run: pwd
+      - run: cd ../
+      - run: pwd
+      - run: ls
       - run: prova_steps.bat
         
   XServicesInstallation:
