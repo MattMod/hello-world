@@ -1,3 +1,5 @@
+name: CI - Static Code Analisys
+
 on: [push]
 
 jobs:
