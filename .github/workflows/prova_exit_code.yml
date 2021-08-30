@@ -26,11 +26,11 @@ jobs:
         shell: pwsh
         run: |
              $EXIT_CODE = "$(cat .\bat_scripts\exit_code.bat)"
-             echo "::set-env name=RESULT_EXIT_CODE::$EXIT_CODE"
+             echo "::set-output name=RESULT_EXIT_CODE::$EXIT_CODE"
    
       - name: Print Code
         id: print
         shell: pwsh
         if: ${{env.EXIT_CODE== '0'}}
         run: |
-             echo "EXIT CODE: ${{env.IMAGE_SCAN_RESULTS}}"
+             echo "EXIT CODE: ${{steps.bat.outputs.RESULT_EXIT_CODE}}"
