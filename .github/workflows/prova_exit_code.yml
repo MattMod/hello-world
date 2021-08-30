@@ -31,6 +31,6 @@ jobs:
       - name: Print Code
         id: print
         shell: pwsh
-        if: ${{env.EXIT_CODE== '0'}}
+        if: ${{steps.bat.outputs.RESULT_EXIT_CODE == '0'}}
         run: |
              echo "EXIT CODE: ${{steps.bat.outputs.RESULT_EXIT_CODE}}"
