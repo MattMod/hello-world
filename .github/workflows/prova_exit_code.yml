@@ -18,6 +18,9 @@ jobs:
     runs-on: windows-latest
     
     steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
       - name: Run Bat
         id: bat
         shell: pwsh
