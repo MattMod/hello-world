@@ -1,0 +1,33 @@
+name: Lettura Exit Code
+
+on:
+  workflow_dispatch:
+#    inputs:
+#      versionName:
+#        description: 'Name of version (ie 5.5.0)'
+#        required: true
+#      branchName:
+#        description: 'Name of branch to deploy'
+#        required: true
+#      destinationEnv:
+#        description: 'Name of destination Branch'
+#        required: true
+        
+jobs:
+  DeployWM:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Run Bat
+        id: bat
+        shell: pwsh
+        run: |
+             export EXIT_CODE="$(cat .\.github\bat_scripts\exit_code.bat)"
+             echo "::set-env name=RESULT_EXIT_CODE::$EXIT_CODE"
+   
+      - name: Print Code
+        id: print
+        shell: pwsh
+        if: ${{env.EXIT_CODE== '0'}}
+        run: |
+             echo "EXIT CODE: ${{env.IMAGE_SCAN_RESULTS}}"
