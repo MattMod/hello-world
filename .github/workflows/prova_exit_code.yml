@@ -25,7 +25,7 @@ jobs:
         id: bat
         shell: pwsh
         run: |
-             export EXIT_CODE="$(cat .\.github\bat_scripts\exit_code.bat)"
+             export EXIT_CODE="$(cat .\bat_scripts\exit_code.bat)"
              echo "::set-env name=RESULT_EXIT_CODE::$EXIT_CODE"
    
       - name: Print Code
