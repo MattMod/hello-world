@@ -14,7 +14,7 @@ on:
 #        required: true
         
 jobs:
-  DeployWM:
+  PrintCode:
     runs-on: windows-latest
     
     steps:
