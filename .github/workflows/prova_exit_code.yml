@@ -21,17 +21,16 @@ jobs:
       - uses: actions/checkout@v2
         with:
           lfs: 'true'
+          
       - name: Run Bat
         id: bat
         shell: pwsh
         run: |
-             $EXIT_CODE = "$(.\bat_scripts\exit_code.bat)"
-             echo "::set-output name=RESULT_EXIT_CODE::$EXIT_CODE"
-             echo "${{steps.bat.outputs.RESULT_EXIT_CODE}}"
+             .\bat_scripts\exit_code.bat
    
       - name: Print Code
         id: print
         shell: pwsh
-        if: ${{steps.bat.outputs.RESULT_EXIT_CODE == '0'}}
+        if: ${{ success() }}
         run: |
-             echo "EXIT CODE: ${{steps.bat.outputs.RESULT_EXIT_CODE}}"
+             echo "EXIT CODE: SUCCESS"
