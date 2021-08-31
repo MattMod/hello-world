@@ -26,7 +26,8 @@ jobs:
         id: grep
         shell: pwsh
         run: |
-             echo "::set-output name=LOG_RESULT::$(echo Select-String -Path .\prova_grep.txt -Pattern ' Ted ' -CaseSensitive -Quiet)"
+             echo "::set-output name=LOG_RESULT::$(Select-String -Path .\prova_grep.txt -Pattern ' Ted ' -CaseSensitive -Quiet)"
+             echo "${{ steps.grep.outputs.LOG_RESULT }}"
    
       - name: Print Result
         id: print
