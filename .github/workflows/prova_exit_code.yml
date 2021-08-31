@@ -25,7 +25,7 @@ jobs:
         id: bat
         shell: pwsh
         run: |
-             $EXIT_CODE = "$(cat .\bat_scripts\exit_code.bat)"
+             $EXIT_CODE = "$(.\bat_scripts\exit_code.bat)"
              echo "::set-output name=RESULT_EXIT_CODE::$EXIT_CODE"
    
       - name: Print Code
