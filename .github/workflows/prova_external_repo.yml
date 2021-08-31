@@ -1,0 +1,25 @@
+name: CD - Deploy
+
+on:
+  workflow_dispatch:
+#    inputs:
+#      versionName:
+#        description: 'Name of version (ie 5.5.0)'
+#        required: true
+#      branchName:
+#        description: 'Name of branch to deploy'
+#        required: true
+#      destinationEnv:
+#        description: 'Name of destination Branch'
+#        required: true
+        
+jobs:
+  DeployWM:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout external repo
+        uses: actions/checkout@main
+        with:
+          repository: orgname/reponame
+          token: ${{ secrets.my_personalaccesstoken }}
