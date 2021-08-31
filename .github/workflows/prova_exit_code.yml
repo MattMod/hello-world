@@ -27,6 +27,7 @@ jobs:
         run: |
              $EXIT_CODE = "$(.\bat_scripts\exit_code.bat)"
              echo "::set-output name=RESULT_EXIT_CODE::$EXIT_CODE"
+             echo "${{steps.bat.outputs.RESULT_EXIT_CODE}}"
    
       - name: Print Code
         id: print
