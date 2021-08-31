@@ -1,4 +1,4 @@
-name: CD - Deploy
+name: Checkout
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
 #        required: true
         
 jobs:
-  DeployWM:
+  CheckoutExternalRepo:
     runs-on: windows-latest
     
     steps:
