@@ -1,0 +1,36 @@
+name: Lettura Log
+
+on:
+  workflow_dispatch:
+#    inputs:
+#      versionName:
+#        description: 'Name of version (ie 5.5.0)'
+#        required: true
+#      branchName:
+#        description: 'Name of branch to deploy'
+#        required: true
+#      destinationEnv:
+#        description: 'Name of destination Branch'
+#        required: true
+        
+jobs:
+  LogResult:
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: 'true'
+          
+      - name: Run Grep
+        id: grep
+        shell: pwsh
+        run: |
+             echo "::set-output name=LOG_RESULT::$(echo Select-String -Path .\prova_grep.txt -Pattern ' Ted ' -CaseSensitive -Quiet)"
+   
+      - name: Print Result
+        id: print
+        shell: pwsh
+        if: ${{ steps.grep.outputs.LOG_RESULT == 'True' }}
+        run: |
+             echo "EXIT CODE: SUCCESS"
