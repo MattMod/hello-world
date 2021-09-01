@@ -15,6 +15,7 @@ on:
         
 jobs:
   LogResult:
+    if: github.actor != 'MattMod'
     runs-on: windows-latest
     
     steps:
