@@ -1,3 +1,4 @@
+#pullreq
 name: CI - Static Code Analisys [C.I.]
 
 on: [push]
