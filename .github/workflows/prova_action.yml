@@ -1,3 +1,5 @@
+name: Prova Action
+
 on: workflow_dispatch
 
 jobs:
