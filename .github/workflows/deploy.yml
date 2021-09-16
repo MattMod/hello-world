@@ -9,12 +9,15 @@ on:
       branchName:
         description: 'Name of branch to deploy'
         required: true
-#      destinationEnv:
-#        description: 'Name of destination Branch'
-#        required: true
+      destinationEnv:
+        description: 'Name of deploy destination Environment'
+        required: true
+      installationType:
+        description: 'Type of installation (Clean, Update)'
+        required: true
         
 jobs:
-  GetDownloadURL:
+  CheckConfigDeploy:
     runs-on: ubuntu-latest
     
     outputs:
@@ -31,64 +34,87 @@ jobs:
       - name: Get latest artifact id
         id: max_id
         shell: bash
+        if: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }} != "XStore__"
         run: |
               echo "::set-output name=MAX_ID::$(curl -fs https://api.github.com/repos/${{github.repository}}/actions/artifacts |
               jq '[ .artifacts[] | select(.name == "${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}" and .expired == false) | .id ] | max')
               
+      - name: Check Artifact name
+        if: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }} == "XStore__"
+        run: |
+              echo "Check the Artifact name: it could be unacceptable value"
+              exit 1
+              
       - name: Get lastest artifact url
         id: url
         shell: bash
+        if: ${{ steps.max_id.outputs.MAX_ID }} != ""
         run: |
               echo "::set-output name=URL::$(curl -fs https://api.github.com/repos/${{github.repository}}/actions/artifacts |
               jq '.artifacts[] | select(.id == ${{ steps.max_id.outputs.MAX_ID }} and .expired == false) | .archive_download_url')
-        
+              
+      - name: Check Artifact ID
+        if: ${{ steps.max_id.outputs.MAX_ID }} == "" || ${{ steps.url.outputs.URL }} == ""
+        run: |
+              echo "Check the Artifact name: it could be unacceptable value"
+              echo "Check the Artifacts list: the Artifact you are looking for could not exist"
+              exit 1
+              
+      - name: Check installation type
+        if: ${{ github.event.inputs.installationType }} != "Clean" && ${{ github.event.inputs.installationType }} != "Update"
+        run: |
+              echo "Check the Installation Type input: value not accepted"
+              exit 1
       
   DeployXOffice:
     runs-on: ubuntu-latest
-    needs: GetDownloadURL
+    needs: CheckConfigDeploy
     
     steps:
       - uses: actions/checkout@v2
         with:
           lfs: 'true'
+      
       - name: Download Artifact
-        if: ${{needs.GetDownloadURL.outputs.url}} != ""
+        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
         shell: bash
         run: |
               #!/bin/bash
               mkdir ./output
               cd ./output
-              curl -u username[:{personalaccesstoken}] -o "${{needs.GetDownloadURL.outputs.artifact}}.zip" "${{needs.GetDownloadURL.outputs.url}}"
+              curl -u username[:{personalaccesstoken}] -o "${{needs.CheckConfigDeploy.outputs.artifact}}.zip" "${{needs.CheckConfigDeploy.outputs.url}}"
               
-      - name: Deploy XOffice
-        if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        shell: bash
-        run: .\shell_scripts\xo_setup.sh ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+#      - name: Deploy XOffice
+#        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
+#        shell: bash
+#        run: .\shell_scripts\xo_setup.sh ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ github.event.inputs.destinationEnv }}
       
   DeployXStore:
     runs-on: windows-latest
-    needs: [GetDownloadURL, DeployXOffice]
+    needs: [CheckConfigDeploy, DeployXOffice]
     
     steps:
       - uses: actions/checkout@v2
         with:
            lfs: 'true'
+      
       - name: Download Artifact
-        if: ${{needs.GetDownloadURL.outputs.url}} != ""
+        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
         shell: powershell
         run: |             
-             $Token = 'XXXusernameXXX:${{ secrets.ACTIONS_TOKEN }}'
+             $Token = 'MattMod:${{ secrets.PAT_AMP }}'
              $Base64Token = [System.Convert]::ToBase64String([char[]]$Token);
              $Headers = @{
                 Authorization = 'Basic {0}' -f $Base64Token;
              }
-             Invoke-WebRequest -Headers $Headers -Uri ${{needs.GetDownloadURL.outputs.url}} -Method Get -OutFile "${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}.zip"
+             Invoke-WebRequest -Headers $Headers -Uri ${{needs.CheckConfigDeploy.outputs.url}} -Method Get -OutFile "${{needs.CheckConfigDeploy.outputs.artifact}}.zip"
         
-      - name: Deploy with PowerShell
-        if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        shell: powershell
-        run: .\bat_scripts\xs_setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
-      - name: XUnit Test with PowerShell
-        if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        shell: powershell
-        run: .\bat_scripts\xunit_test.bat # "./bat_scripts/test.bat" also can work
+#      - name: Deploy with PowerShell
+#        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
+#        shell: powershell
+#        run: .\bat_scripts\xs_setup.bat ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ github.event.inputs.destinationEnv }}
+#      
+#      - name: XUnit Test with PowerShell
+#        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
+#        shell: powershell
+#        run: .\bat_scripts\xunit_test.bat # "./bat_scripts/test.bat" also can work
