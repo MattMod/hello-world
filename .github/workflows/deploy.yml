@@ -19,21 +19,25 @@ jobs:
     
     outputs:
       url: ${{ steps.url.outputs.URL }}
+      artifact: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}
     
     steps:
       - name: Set current artifact name
         id: current-artifact
+        shell: bash
         run: |
               echo "::set-output name=CURRENT_ARTIFACT::$(echo XStore_${{ github.event.inputs.branchName }}_${{ github.event.inputs.versionName }})"
       
       - name: Get latest artifact id
         id: max_id
+        shell: bash
         run: |
               echo "::set-output name=MAX_ID::$(curl -fs https://api.github.com/repos/${{github.repository}}/actions/artifacts |
-              jq '[ .artifacts[] | select(.name == "XStore_${{ github.event.inputs.branchName }}_${{ github.event.inputs.versionName }}" and .expired == false) | .id ] | max')
+              jq '[ .artifacts[] | select(.name == "${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}" and .expired == false) | .id ] | max')
               
       - name: Get lastest artifact url
         id: url
+        shell: bash
         run: |
               echo "::set-output name=URL::$(curl -fs https://api.github.com/repos/${{github.repository}}/actions/artifacts |
               jq '.artifacts[] | select(.id == ${{ steps.max_id.outputs.MAX_ID }} and .expired == false) | .archive_download_url')
@@ -49,13 +53,17 @@ jobs:
           lfs: 'true'
       - name: Download Artifact
         if: ${{needs.GetDownloadURL.outputs.url}} != ""
+        shell: bash
         run: |
+              #!/bin/bash
+              mkdir ./output
+              cd ./output
+              curl -u username[:{personalaccesstoken}] -o "${{needs.GetDownloadURL.outputs.artifact}}.zip" "${{needs.GetDownloadURL.outputs.url}}"
               
-              
-      - name: Deploy with PowerShell
+      - name: Deploy XOffice
         if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        shell: pwsh
-        run: .\bat_scripts\setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
+        shell: bash
+        run: .\shell_scripts\xo_setup.sh ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
       
   DeployXStore:
     runs-on: windows-latest
@@ -67,14 +75,20 @@ jobs:
            lfs: 'true'
       - name: Download Artifact
         if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        run: |
-        
+        shell: powershell
+        run: |             
+             $Token = 'XXXusernameXXX:${{ secrets.ACTIONS_TOKEN }}'
+             $Base64Token = [System.Convert]::ToBase64String([char[]]$Token);
+             $Headers = @{
+                Authorization = 'Basic {0}' -f $Base64Token;
+             }
+             Invoke-WebRequest -Headers $Headers -Uri ${{needs.GetDownloadURL.outputs.url}} -Method Get -OutFile "${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}.zip"
         
       - name: Deploy with PowerShell
         if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        shell: pwsh
-        run: .\bat_scripts\setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
+        shell: powershell
+        run: .\bat_scripts\xs_setup.bat ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }} # ${{ github.event.inputs.destinationEnv }}  # "./bat_scripts/test.bat" also can work
       - name: XUnit Test with PowerShell
         if: ${{needs.GetDownloadURL.outputs.url}} != ""
-        shell: pwsh
+        shell: powershell
         run: .\bat_scripts\xunit_test.bat # "./bat_scripts/test.bat" also can work
