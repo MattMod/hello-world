@@ -1,4 +1,4 @@
-name: WM Build&Deploy
+name: GetCurrentDate
 on:
   workflow_dispatch
   
