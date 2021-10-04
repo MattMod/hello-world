@@ -56,7 +56,7 @@ jobs:
             
             $buildSourceDir="F:\BuildsRepo\git\ES\${{ steps.environment.outputs.ENVIRONMENT }}\Symphony"
             echo "OK SOUR"
-            $append=$buildSourceDir\packages\
+            $append="$buildSourceDir\packages\"
             echo "OK APPE"
             
             echo "--CHECK 'TYPEBUILD' INPUT VARIABLE--"
