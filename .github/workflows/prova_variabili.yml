@@ -42,7 +42,7 @@ jobs:
       - name: Preconditions
         id: preconditions
         run: |
-            if (${{ steps.environment.outputs.ENVIRONMENT }} -ine "TST") {
+            if ("${{ steps.environment.outputs.ENVIRONMENT }}" -ine "TST") {
                 echo "Error: input Environment '${{ steps.environment.outputs.ENVIRONMENT }}' not valid."
                 exit 1
             }
