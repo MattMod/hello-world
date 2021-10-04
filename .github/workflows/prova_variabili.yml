@@ -26,17 +26,18 @@ jobs:
             shell: powershell
             
     steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          lfs: 'true'
+          
       - name: Set Environment
         id: environment
         run: |
             if (${{ github.event.inputs.branch }} -eq "main") {
               echo '::set-output name=ENVIRONMENT::TST'
+              echo "ho settato"
             }
-            
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.branch }}
-          lfs: 'true'
           
       - name: Preconditions
         id: preconditions
