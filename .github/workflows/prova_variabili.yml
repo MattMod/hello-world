@@ -30,8 +30,7 @@ jobs:
         id: environment
         run: |
             if (${{ github.event.inputs.branch }} -eq "main") {
-              $var="TST"
-              echo "::set-output name=ENVIRONMENT::$var"
+              echo '::set-output name=ENVIRONMENT::TST'
             }
             
       - uses: actions/checkout@v2
