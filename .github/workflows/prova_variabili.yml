@@ -46,12 +46,18 @@ jobs:
                 echo "Error: input Environment '${{ steps.environment.outputs.ENVIRONMENT }}' not valid."
                 exit 1
             }
+            
+            echo "OK IF"
 
-            $build=${{ github.event.inputs.typeBuild }}
-            $packages=${{ github.event.inputs.packages }}
+            $build="${{ github.event.inputs.typeBuild }}"
+            echo "OK BUILD"
+            $packages="${{ github.event.inputs.packages }}"
+            echo "OK PACK"
             
             $buildSourceDir="F:\BuildsRepo\git\ES\${{ steps.environment.outputs.ENVIRONMENT }}\Symphony"
-            $append="$buildSourceDir\packages\"
+            echo "OK SOUR"
+            $append=$buildSourceDir"\packages\"
+            echo "OK APPE"
             
             echo "--CHECK 'TYPEBUILD' INPUT VARIABLE--"
             $typebuild=$build.ToLower()
