@@ -1,0 +1,108 @@
+name: Prova Variabili
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'branch that is built by the workflow'
+        required: true
+      typeBuild:
+        description: 'Build type (full/packages)'
+        required: true
+        default: 'full'
+      packages:
+        description: 'List of packages to build, separeted by comma (ie Lead,Item,...)'
+        required: false
+        default: ''
+        
+permission: 
+  contents: read
+  
+jobs:
+  Prova:
+    name: Prova
+    runs-on: windows-latest
+    defaults:
+        run:
+            shell: powershell
+            
+    steps:
+      - name: Set Environment
+        id: environment
+        run: |
+            if (${{ github.event.inputs.branch }} -eq "main") {
+                run: echo "::set-output name=ENVIRONMENT::TST"
+            }
+            
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          lfs: 'true'
+          
+      - name: Preconditions
+        id: preconditions
+        run: |
+            if (${{ steps.environment.outputs.ENVIRONMENT }} -ine "TST") {
+                echo "Error: input Environment '${{ steps.environment.outputs.ENVIRONMENT }}' not valid."
+                exit 1
+            }
+
+            $build=${{ github.event.inputs.typeBuild }}
+            $packages=${{ github.event.inputs.packages }}
+            
+            $buildSourceDir="F:\BuildsRepo\git\ES\${{ steps.environment.outputs.ENVIRONMENT }}\Symphony"
+            $append="$buildSourceDir\packages\"
+            
+            echo "--CHECK 'TYPEBUILD' INPUT VARIABLE--"
+            $typebuild=$build.ToLower()
+            if (-Not ($typebuild -ieq "full" -or $typebuild -ieq "packages")) {
+                echo "Error: 'typeBuild' input value NOT accepted: $typebuild"
+                exit 1
+            }
+            echo "::set-output name=TYPEBUILD::$typebuild"
+            
+            echo "--CHECK 'PACKAGES' INPUT VARIABLE--"
+            if ($packages -ine "" -and ($typebuild -ieq "packages")) {
+                $splitted=$packages -split ","
+                $splitted.trim()
+                $i=0
+                $path=""
+                foreach ($pack in $splitted) {
+                    if ($i -eq 0) {
+                        $path="$append$pack"
+                    } else {
+                        $path="$path;$append$pack"
+                    }
+                    $i++
+                }
+                echo "::set-output name=PACKAGES::$path"
+                echo "'PACKAGES': VALID INPUT"
+            }
+            
+      - name: FullBuild
+        id: fBuild
+        if: ${{ success() && steps.preconditions.outputs.TYPEBUILD == "full" }}
+        run: |
+          echo "${{ steps.preconditions.outputs.TYPEBUILD }}"
+          echo "${{ steps.preconditions.outputs.PACKAGES }}"
+
+      - name: PackagesBuild
+        id: pBuild
+        if: ${{ success() && steps.preconditions.outputs.TYPEBUILD == "packages" }}
+        run: |
+          echo "${{ steps.preconditions.outputs.TYPEBUILD }}"
+          echo "${{ steps.preconditions.outputs.PACKAGES }}"
+          
+  Prova2:
+    name: Prova2
+    runs-on: windows-latest
+    needs: Prova
+    defaults:
+        run:
+            shell: powershell
+
+    steps:
+      - name: Preconditions
+        id: preconditions
+        run: |
+          echo "${{ steps.preconditions.outputs.TYPEBUILD }}"
+          echo "${{ steps.preconditions.outputs.PACKAGES }}"
