@@ -62,24 +62,24 @@ jobs:
             $packages="${{ github.event.inputs.packages }}"
             
             echo "--CHECK 'BAT SCRIPT' VARIABLE--"
-            echo "$bat"
+            echo "BAT SCRIPT: $bat"
             echo "::set-output name=BAT::$bat"
             
             echo "--CHECK 'PACKAGES PATH' VARIABLE--"
-            echo "$append"
+            echo "PACKAGES PATH: $append"
             echo "::set-output name=APPEND::$append"
             
             echo "--CHECK 'OUTPUT DIRECTORY' VARIABLE--"
-            echo "$buildOutputDir"
+            echo "OUTPUT DIRECTORY: $buildOutputDir"
             echo "::set-output name=OUTPUT_DIR::$buildOutputDir"
             
             echo "--CHECK 'SOURCE DIRECTORY' VARIABLE--"
-            echo "$buildSourceDir"
+            echo "SOURCE DIRECTORY: $buildSourceDir"
             echo "::set-output name=SOURCE_DIR::$buildSourceDir"
             
             #CONTROLLO SOLO DIRECTORY E NON FILE DI LOG
             echo "--SET 'LOG FILE' VARIABLE--"
-            echo "$log"
+            echo "LOG: $log"
             echo "::set-output name=LOG_FILE::$log"
             
             echo "--CHECK 'TYPEBUILD' INPUT VARIABLE--"
