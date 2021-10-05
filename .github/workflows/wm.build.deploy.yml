@@ -1,0 +1,273 @@
+name: WM Build&Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'branch that is built by the workflow'
+        required: true
+      typeBuild:
+        description: 'Build type (full/packages)'
+        required: true
+        default: 'full'
+      packages:
+        description: 'List of packages to build, separeted by comma (ie Lead,Item,...)'
+        required: false
+        default: ''
+
+permissions:
+    contents: read
+
+jobs:
+  WMBuild:
+    name: WMBuild
+    runs-on: windows-latest
+    defaults:
+        run:
+            shell: powershell
+    
+    steps:
+#      - name: Check LongPathsEnabled
+#        run: |
+#            (Get-ItemProperty "HKLM:System\CurrentControlSet\Control\FileSystem").LongPathsEnabled
+
+      - uses: actions/checkout@v2
+        with:
+            ref: ${{ github.event.inputs.branch }}
+    
+      - name: Set Environment
+        id: environment
+        run: |
+            if ("${{ github.event.inputs.branch }}" -like "release\*") {
+                echo "::set-output name=ENVIRONMENT::QA"
+            } elseif ("${{ github.event.inputs.branch }}" -eq "master") {
+                echo "::set-output name=ENVIRONMENT::PRD"
+            } elseif ("${{ github.event.inputs.branch }}" -eq "main") {
+                echo "::set-output name=ENVIRONMENT::TST"
+            }
+      - name: Get current date
+        id: date
+        run: |
+            $date=Get-Date -UFormat '%Y%m%d%H%M'
+            echo "::set-output name=DATE::$date"
+      - name: Preconditions
+        id: preconditions
+        run: |
+            if ("${{ steps.environment.outputs.ENVIRONMENT }}" -ine "QA" -and ("${{ steps.environment.outputs.ENVIRONMENT }}" -ine "PRD") -and ("${{ steps.environment.outputs.ENVIRONMENT }}" -ine "TST")) {
+                echo "Error: input Environment '${{ steps.environment.outputs.ENVIRONMENT }}' not valid."
+                exit 1
+            }
+            $bat="C:\SoftwareAG\IS\common\AssetBuildEnvironment\bin\build.bat"
+            $buildSourceDir="F:\BuildsRepo\git\ES\${{ steps.environment.outputs.ENVIRONMENT }}\Symphony"
+            $append="$buildSourceDir\packages\"
+            $buildOutputDir="F:\Builds\ES\${{ steps.environment.outputs.ENVIRONMENT }}"
+            $log="$buildOutputDir\build_${{ steps.date.outputs.DATE }}.log"
+            $build="${{ github.event.inputs.typeBuild }}"
+            $packages="${{ github.event.inputs.packages }}"
+            
+            echo "--CHECK 'BAT SCRIPT' VARIABLE--"
+            echo "$bat"
+            echo "::set-output name=BAT::$bat"
+            
+            echo "--CHECK 'PACKAGES PATH' VARIABLE--"
+            echo "$append"
+            echo "::set-output name=APPEND::$append"
+            
+            echo "--CHECK 'OUTPUT DIRECTORY' VARIABLE--"
+            echo "$buildOutputDir"
+            echo "::set-output name=OUTPUT_DIR::$buildOutputDir"
+            
+            echo "--CHECK 'SOURCE DIRECTORY' VARIABLE--"
+            echo "$buildSourceDir"
+            echo "::set-output name=SOURCE_DIR::$buildSourceDir"
+            
+            #CONTROLLO SOLO DIRECTORY E NON FILE DI LOG
+            echo "--SET 'LOG FILE' VARIABLE--"
+            echo "$log"
+            echo "::set-output name=LOG_FILE::$log"
+            
+            echo "--CHECK 'TYPEBUILD' INPUT VARIABLE--"
+            $typebuild=$build.ToLower()
+            if (-Not ($typebuild -ieq "full" -or $typebuild -ieq "packages")) {
+                echo "Error: 'typeBuild' input value NOT accepted: $typebuild"
+                exit 1
+            }
+            echo "::set-output name=TYPEBUILD::$typebuild"
+            if ($packages -ine "" -and  ($typebuild -ieq "full")) {
+                echo "Error: Check 'packages' and 'typebuild' input values. PACKAGES: $packages; TYPEBUILD: $typebuild "
+                exit 1
+            }
+            if ($packages -ieq "" -and  ($typebuild -ieq "packages")) {
+                echo "Error: Check 'packages' and 'typebuild' input values. PACKAGES: $packages; TYPEBUILD: $typebuild "
+                exit 1
+            }
+            echo "--CHECK 'PACKAGES' INPUT VARIABLE--"
+            if ($packages -ine "" -and ($typebuild -ieq "packages")) {
+                $splitted=$packages -split ","
+                $splitted.trim()
+                $i=0
+                $path=""
+                foreach ($pack in $splitted) {
+                    if ($i -eq 0) {
+                        $path="$append$pack"
+                    } else {
+                        $path="$path;$append$pack"
+                    }
+                    $i++
+                }
+                echo "PACKAGES: $path"
+                echo "::set-output name=PACKAGES::$path"
+                echo "'PACKAGES': VALID INPUT"
+            }
+      - name: FullBuild
+        id: fBuild
+        if: ${{ success() && steps.preconditions.outputs.TYPEBUILD == 'full' }}
+        run: |
+              echo "FULLBUILD"
+      - name: PackagesBuild
+        id: pBuild
+        if: ${{ success() && steps.preconditions.outputs.TYPEBUILD == 'packages' }}
+        run: |
+            echo "PACKAGES BUILD"
+#      - name: Archive Artifct
+#        if: ${{ success() }}
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: WM_${{ steps.environment.outputs.ENVIRONMENT }}_${{ steps.preconditions.outputs.TYPEBUILD }}_${{ steps.date.outputs.DATE }}
+#          path: ${{ steps.preconditions.outputs.OUTPUT_DIR }}
+
+      - name: Echo variables
+        if: ${{ always() }}
+        run: |
+            echo "FULLBUILD INPUT PARAMETER: ${{ steps.preconditions.outputs.FULLBUILD }}"
+            echo "PACKAGES INPUT PARAMETER: ${{ steps.preconditions.outputs.PACKAGES }}"
+            echo "SCRIPT BAT: ${{ steps.preconditions.outputs.BAT }}"
+            echo "PACKAGES PATH: ${{ steps.preconditions.outputs.APPEND }}"
+            echo "OUTPUT DIRECTORY: ${{ steps.preconditions.outputs.OUTPUT_DIR }}"
+            echo "SOURCE DIRECTORY: ${{ steps.preconditions.outputs.SOURCE_DIR }}"
+            echo "LOG FILE: ${{ steps.preconditions.outputs.LOG_FILE }}"
+ #     - name: Echo Build.log
+ #       if: ${{ always() }}
+ #       run: |
+ #           echo "---BUILD.LOG---"
+ #           Get-Content -Path ${{ steps.preconditions.outputs.LOG_FILE }}
+  WMDeploy:
+    name: WMDeploy
+    runs-on: windows-latest
+    needs: WMBuild
+    defaults:
+        run:
+            shell: powershell
+
+    steps:
+      - name: Preconditions
+        id: preconditions
+        run: |
+            $path_config="F:\Deploy\deployer\ES\${{ steps.environment.outputs.ENVIRONMENT }}"
+            $updateAutomator="F:\Deploy\deployer\updateAutomator.xml"
+            $projectAutomator="$path_config\Deployment_ProjectAutomator.xml"
+            $ant_bat="C:\SoftwareAG\IS\common\lib\ant\bin\ant.bat"
+            $deploy_path="C:\SoftwareAG\IS\IntegrationServer\instances\ES\packages\WmDeployer\bin"
+            $project_bat="$deploy_path\projectautomator.bat"
+            $deployer_bat="$deploy_path\Deployer.bat"
+            $aLog="$path_config\logs\automator_${{ steps.date.outputs.DATE }}.log"
+            $dLog="$path_config\logs\deploy_${{ steps.date.outputs.DATE }}.log"
+            
+            echo "--CHECK 'ANT BAT SCRIPT' VARIABLE--"
+            echo "ANT BAT: $ant_bat"
+            echo "::set-output name=ANT_BAT::$ant_bat"
+            
+            echo "--CHECK 'UPDATE AUTOMATOR XML FILE' VARIABLE--"
+            echo "UPDATEAUTOMATOR: $updateAutomator"
+            echo "::set-output name=UPD_AUTOMATOR::$updateAutomator"
+            
+            echo "--CHECK 'PROJECT BAT SCRIPT' VARIABLE--"
+            echo "PROJECT BAT: $project_bat"
+            echo "::set-output name=PROJ_BAT::$project_bat"
+            
+            echo "--CHECK 'PROJECT XML FILE' VARIABLE--"
+            echo "PROJECT AuTOMATOR: $projectAutomator"
+            echo "::set-output name=PROJ_AUTOMATOR::$projectAutomator"
+            
+            echo "--CHECK 'DEPLOYER BAT SCRIPT' VARIABLE--"
+            echo "DEPLOYER BAT: $deployer_bat"
+            echo "::set-output name=DEPLOYER_BAT::$deployer_bat"
+            
+            echo "--SET 'LOG FILE' VARIABLE--"
+            echo "ALOG: $aLog"
+            echo "::set-output name=ALOG_FILE::$aLog"
+            echo "--SET 'LOG FILE' VARIABLE--"
+            echo "DLOG: $dLog"
+            echo "::set-output name=DLOG_FILE::$dLog"
+            
+            echo "PROPERTIES CHECK"
+            echo "-----------------"
+            $file="$path_config\${{ steps.environment.outputs.ENVIRONMENT }}_config.properties"
+            echo "PROPERTIES FILE: $file"
+            echo "::set-output name=PROP_FILE::$file"
+            
+#            echo "---CANDIDATE NAME---"
+#            $cd_keyvalue = Select-String -Path $file -pattern 'candidate.name' -CaseSensitive
+#            $cd_value = $cd_keyvalue -split '='
+#            $candidate = $cd_value[1].Trim()
+#            if ($candidate -eq '') {
+#                echo "Error: The 'candidate.name' property is blank."
+#                exit 1
+#            }
+#            echo "::set-output name=CANDIDATE::$candidate"
+#            echo "---PROJECT NAME---"
+#            $project_keyvalue Select-String -Path $file -pattern 'project.name' -CaseSensitive
+#            $project_value=$project_keyvalue -split '='
+#            $project=$project_value[1].Trim()
+#            if ($project -eq '') {
+#                echo "Error: The 'project.name' property is blank."
+#                exit 1
+#            }
+#            echo "::set-output name=PROJECT::$project"
+#            echo "---HOST---"
+#            $hosto_keyvalue Select-String -Path $file -pattern 'local.host' -CaseSensitive
+#            $hosto_value=$hosto_keyvalue -split '='
+#            $hosto=$hosto_value[1].Trim()
+#            if ($hosto -eq '') {
+#                echo "Error: The 'local.host' property is blank."
+#                exit 1
+#            }
+#            echo "::set-output name=HOST::$hosto"
+#            echo "---PORT---"
+#            $porto_keyvalue Select-String -Path $file -pattern 'local.port' -CaseSensitive
+#            $porto_value=$porto_keyvalue -split '='
+#            $porto=$porto_value[1].Trim()
+#            if ($porto -eq '') {
+#                echo "Error: The 'local.port' property is blank."
+#                exit 1
+#            }
+#            echo "::set-output name=PORT::$porto"
+            echo "-----------------"
+      - name: Update Deployment_ProjectAutomator
+        id: projectautomator
+        if: ${{ success() }}
+        run: |
+            echo "UPDATE PROJECT AUTOMATOR XML"
+      - name: Deployment objects creation
+        id: objects
+        if: ${{ success() }}
+        run: |
+           echo "OBJECT CREATION"
+      - name: Packages deploy
+        id: deploy
+        if: ${{ success() }}
+        run: |
+            echo "DEPLOY"
+      - name: Echo variables
+        if: ${{ always() }}
+        run: |
+            echo "VARIABLES"
+#      - name: Echo Automator.log
+#        if: ${{ always() }}
+#        run: |
+#            echo "---AUTOMATOR.LOG---"
+#            Get-Content -Path ${{ steps.preconditions.outputs.ALOG }}
+#      - name: Echo Deploy.log
+#        if: ${{ always() }}
+#        run: |
+#            echo "---DEPLOY.LOG---"
+#            Get-Content -Path ${{ steps.preconditions.outputs.DLOG }}
