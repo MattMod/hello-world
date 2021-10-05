@@ -238,7 +238,6 @@ jobs:
 #                exit 1
 #            }
 #            echo "::set-output name=PORT::$porto"
-            echo "-----------------"
       - name: Update Deployment_ProjectAutomator
         id: projectautomator
         if: ${{ success() }}
