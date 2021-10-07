@@ -16,4 +16,4 @@ jobs:
     steps:
       - name: Check Variable
         run: |
-            echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
+            echo "GITHUB_REPOSITORY: ${{ github.repository }}"
