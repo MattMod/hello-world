@@ -1,0 +1,19 @@
+name: ENV Variable
+on:
+  workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+  ENVVariable:
+    name: ENVVariable
+    runs-on: windows-latest
+    defaults:
+        run:
+            shell: powershell
+    
+    steps:
+      - name: Check Variable
+        run: |
+            echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
