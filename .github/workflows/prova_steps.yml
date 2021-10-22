@@ -23,8 +23,8 @@ jobs:
         with:
           lfs: 'true'
       - name: Deploy with PowerShell
-        shell: pwsh
-        run: echo ${{ github.event.inputs.versionName }} ${{ github.event.inputs.branchName }}
+        shell: powershell
+        run: exit 1
   
   #DEPLOY XSTORE
   DatabaseInstallation:
