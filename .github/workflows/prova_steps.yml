@@ -1,4 +1,4 @@
-name: Deploy
+name: Prova Steps
 
 on:
   workflow_dispatch:
