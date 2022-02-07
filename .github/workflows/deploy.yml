@@ -1,168 +1,25 @@
-name: BigFix Package Preparation
+# This file contains all properties needed for BigFix Deploy automation.
 
-on:
-  workflow_dispatch:
-    inputs:
-      versionName:
-        description: 'Customer build version'
-        required: true
-      releaseName:
-        description: 'XStore version'
-        required: true
-      branchName:
-        description: 'Name of branch to deploy'
-        required: true
-      destinationEnv:
-        type: choice
-        description: 'Name of deploy destination Environment'
-        options: 
-        - DEV
-        - TEST
-        required: true
-      country:
-        type: choice
-        description: 'Country (*Select "WW" if a package will be released in different countries later on!)'
-        options:
-#        - WW (Word Wide) 
-#        - IT (Italy)
-#        - FR (France)
-#        - US (USA)
-#        - DE (Germany)
-#        - UK (United Kingdom)
-#        - CH (Swiss)
-#        - BE (Belgium)
-#        - NL (Netherlands)
-#        - AG (Argentina)
-#        - CB (Columbia)
-#        - CL (Chile)
-#        - EC (Ecuador)
-        - ES (Spain)
-#        - MX (Mexico)
-#        - PT (Portugal)
-#        - AU (Australia)
-#        - IN (India)
-#        - NZ (New Zeland)
-#        - HU (Hungary)
-#        - CN (China)
-#        - PL (Poland)
-#        - PA (Panama)
-#        - SG (Singapore)
-        required: true
-      installationType:
-        type: choice
-        description: 'Type of installation'
-        options: 
-        - clean
-        - update
-        required: true
-        
-jobs:
-  CheckConfigDeploy:
-    runs-on: ubuntu-latest
-    
-    outputs:
-      artifact: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}
-      country: ${{ steps.country.outputs.COUNTRY }}
-    
-    steps:      
-      - name: Set current artifact name
-        id: current-artifact
-        shell: bash
-        run: |
-              echo "::set-output name=CURRENT_ARTIFACT::$(echo XStore_${{ github.event.inputs.branchName }}_${{ github.event.inputs.releaseName }}_${{ github.event.inputs.versionName }})"
-      - name: Set Country
-        id: country
-        shell: bash
-        run: |
-              echo "::set-output name=COUNTRY::$(echo $variabile | cut -d " " -f 1)"
-              
-  CheckFileFlagPresence:
-    runs-on: [self-hosted, XStore, BigFix, Dev]
-    needs: CheckConfigDeploy
-    defaults:
-      run:
-        shell: powershell
+country=
 
-    steps:
-      - name: Check
-        id: fileflag
-        run: |
-            if (Test-Path "C:\SHARING\*.properties") { Write-Error "The properties file-flag already exists in the sharing folder. Please check it manually." }
-                      
-  PackageSharing:
-    runs-on: [self-hosted, XStore, BigFix, Dev]
-    needs: [CheckConfigDeploy, CheckFileFlagPresence]
-    defaults:
-      run:
-        shell: powershell
-    
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.branchName }}
-          lfs: 'true'
+#Installation
+installation.type=
+x.version=
+cust.version=
 
-      - name: Download Artifact
-        id: download
-        run: |
-            $wf = .\gh.exe run list -w "Build workflow" | Select-String -Pattern "success"
-            $runid = 0
-            foreach ($line in $wf) {
-                $fields =  $line.ToString().Split("`t")
-                echo "check $fields[6] workflow..."
-                $art = .\gh.exe run view $fields[6] | Select-String -Pattern ${{needs.CheckConfigDeploy.outputs.artifact}}
-                if ($art.length -gt 0) {
-                   $runid = $fields[6]
-                   break
-                }
-            }
-            if ( $runid -ne 0 ) {
-              echo "clean download directory"
-              Remove-Item C:\WORKINGFOLDER\download\*
-              echo "downloading artifact in C:\WORKINGFOLDER\download..."
-              .\gh.exe run download $runid --dir "C:\WORKINGFOLDER\download"
-              echo "artifact downloaded in C:\WORKINGFOLDER\download !"
-              Get-ChildItem -Path C:\WORKINGFOLDER\download
-            } else {
-              Write-Error "Error: Artifact not found. Download FAILED!"
-            }
-            $runid | Out-Host
-      - name: Create & Share the Package
-        id: share
-        run: |
-            Copy-Item ".\${{ github.workspace }}\deploy_scripts\BigFix\bftemplate.properties" -Destination "C:\WORKINGFOLDER"
-            Copy-Item ".\${{ github.workspace }}\deploy_scripts\BigFix\xs.bfdeploy.ps1" -Destination "C:\WORKINGFOLDER"
-            .\${{ github.workspace }}\deploy_scripts\BigFix\xs.bigfixpack.ps1 ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ github.event.inputs.releaseName }} ${{ github.event.inputs.versionName }} ${{needs.CheckConfigDeploy.outputs.country}}
-      - name: Preparing the Package to be archived
-        id: preparation
-        run: |
-            Copy-Item "C:\WORKINGFOLDER\XStorePOS.zip" -Destination ".\${{ github.workspace }}\tmp"
-      - name: Archive BigFix Package
-        uses: actions/upload-artifact@v2
-        with:
-          name: BigFix_${{needs.CheckConfigDeploy.outputs.country}}_${{ github.event.inputs.installationType }}_${{ github.event.inputs.releaseName }}_${{ github.event.inputs.versionName }}
-          path: |
-              .\${{ github.workspace }}\tmp\XStorePOS.zip
-          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+#XStore Package
+package.name=
+package.version=
 
-  CheckFileFlagCreation:
-    runs-on: [self-hosted, XStore, BigFix, Dev]
-    needs: [CheckConfigDeploy, CheckFileFlagPresence, PackageSharing]
-    defaults:
-      run:
-        shell: powershell
+#Prerequisites
+java.version=11
+oracle.version=19.3
+oracle.installation.path=C:\\PROGRA~1\\app\\oracle\\database
+java.installation.path=C:\\PROGRA~1\\app\\jre
 
-    steps:
-      - name: Check
-        id: fileflagcreation
-        run: |
-            if (-not (Test-Path "C:\SHARING\*.properties") ) { Write-Error "The properties file-flag already exists in the sharing folder. Please check it manually." }
-  WaitingResponse:
-    runs-on: [self-hosted, XStore, BigFix, Dev]
-    needs: CheckFileFlagCreation
-
-    steps:
-      - name: Waiting BigFix response
-        id: response
-        run: |
-            .....
+#Registry Keys
+xstore.registry.key=HKLM:\\Software\\XStorePOS\\xstore
+xenvironment.registry.key=HKLM:\\Software\\XStorePOS\\xenvironment
+xstore.key.property=Version
+xenvironment.key.property=Version
+oracle.registry.key=HKLM:\\SOFTWARE\\ORACLE\\KEY_OraDB19Home1
