@@ -1,60 +1,47 @@
-$time = Get-Date -Format "yyyyMMddHHmm"
-Start-Transcript -Path "C:\Program Files\app\logs\XStorePOS_BigFix_Deploy.$time.log" -IncludeInvocationHeader -NoClobber
+Write-Host ================================================
+Write-Host
+Write-Host Amplifon Update Permissions Script
+Write-Host
+Write-Host ================================================
 
-$ARTIFACT_NAME=$args[0]
-$INSTALLATION_TYPE=$args[1]
-$XVERSION=$args[2]
-$CUSTVERSION=$args[3]
-$COUNTRY=$args[4]
+$APP_ROOT="C:\PROGRA~1\app"
+$JRE_DIR="$APP_ROOT\jre"
+$XSTORE_DIR="$APP_ROOT\xstore"
+$XSTORE_MOBILE_DIR="$APP_ROOT\xstore-mobile"
+$XSTOREDB_DIR="$APP_ROOT\xstoredb"
+$XENV_DIR="$APP_ROOT\environment"
+$UPDATE_DIR="$APP_ROOT\updates"
+$BACKUP_DIR="$APP_ROOT\BACKUPxstore"
 
-#PUT OFF XSTORE ARCHIVE FROM ARTIFACT
-$version = "$XVERSION"+"_$CUSTVERSION"
-$archivename = "XStorePOS"
-Expand-Archive -LiteralPath "C:\WORKINGFOLDER\download\$ARTIFACT_NAME.zip" -DestinationPath "C:\WORKINGFOLDER"
-$xstorepos = "C:\WORKINGFOLDER\OracleRetailXstorePointofService_$XVERSION"+"_AMP_$CUSTVERSION.zip"
-#END PUT OFF XSTORE ARCHIVE FROM ARTIFACT
+Write-Host Application root directory is $APP_ROOT
+Write-Host JRE directory is $JRE_DIR
+Write-Host Xstore root directory is $XSTORE_DIR
+Write-Host Xstore Mobile root directory is $XSTORE_MOBILE_DIR
+Write-Host Xstore DB directory is $XSTOREDB_DIR
+Write-Host Xenvironment root directory is $XENV_DIR
+Write-Host Xenv update directory is $UPDATE_DIR
+Write-Host Backup Xstore directory is $BACKUP_DIR
 
-#POWERSHELL SCRIPT
-$pwshscript = "C:\WORKINGFOLDER\xs.bfdeploy.ps1"
-#END POWERSHELL SCRIPT
+Write-Host ================================================
+Write-Host Reset permissions to default
+Write-Host ================================================
 
-#PROPERTIES FILE
-$TEMPLATE_FILE_LOCATION = 'C:\WORKINGFOLDER\bftemplate.properties'
-$template_ht = ConvertFrom-StringData (Get-Content -Raw $TEMPLATE_FILE_LOCATION)
-$modified_template_ht = ConvertFrom-StringData (Get-Content -Raw $TEMPLATE_FILE_LOCATION)
+Invoke-Expression "icacls $XSTORE_DIR /t /q /c /reset"
+Invoke-Expression "icacls $JRE_DIR /t /q /c /reset"
+Invoke-Expression "icacls $XSTORE_MOBILE_DIR /t /q /c /reset"
+Invoke-Expression "icacls $XSTOREDB_DIR /t /q /c /reset"
+Invoke-Expression "icacls $XENV_DIR /t /q /c /reset"
+Invoke-Expression "icacls $UPDATE_DIR /t /q /c /reset"
+Invoke-Expression "icacls $BACKUP_DIR /t /q /c /reset"
 
-foreach ($key in $template_ht.Keys) {
-    switch -CaseSensitive ( $key ) {
-        'country'           { $modified_template_ht[$key] = $COUNTRY }
-        'installation.type' { $modified_template_ht[$key] = $INSTALLATION_TYPE }
-        'package.name'      { $modified_template_ht[$key] = $archivename }
-        'package.version'   { $modified_template_ht[$key] = $version }
-	'x.version'	    { $modified_template_ht[$key] = $XVERSION }
-	'cust.version'	    { $modified_template_ht[$key] = $CUSTVERSION }
-        default             { if ($modified_template_ht[$key] -eq "") { Write-Error "ERROR: The field '$key' must be filled in!"} else {continue} }
-    }
-}
+Write-Host ================================================
+Write-Host Add RXM permissions for Authenticated Users
+Write-Host ================================================
 
-Set-Content $TEMPLATE_FILE_LOCATION -Value $( 
-	foreach ($key in $modified_template_ht.Keys) {
-		'{0} = {1}' -f $key, $modified_template_ht[$key].Replace('\\', '\')
-	}
-)
-
-$b = Get-Content -Path $TEMPLATE_FILE_LOCATION
-@(ForEach ($a in $b) {$a.Replace(' ', '')}) > $TEMPLATE_FILE_LOCATION
-
-Rename-Item -Path $TEMPLATE_FILE_LOCATION -NewName "bigfix.properties"
-$propertiesfile = "C:\WORKINGFOLDER\bigfix.properties"
-#END PROPERTIES FILE
-
-#CREATE ARCHIVE
-Compress-Archive -LiteralPath $xstorepos, $pwshscript -DestinationPath "C:\WORKINGFOLDER\$archivename" -Force
-#END CREATE ARCHIVE
-
-#COPY ARCHIVE IN SHARING DIR
-Copy-Item "C:\WORKINGFOLDER\$archivename.zip" -Destination "C:\SHARING"
-Copy-Item $propertiesfile -Destination "C:\SHARING"
-#END COPY ARCHIVE IN SHARING DIR
-
-Stop-Transcript
+Invoke-Expression "icacls $JRE_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
+Invoke-Expression "icacls $XSTORE_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
+Invoke-Expression "icacls $XSTORE_MOBILE_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
+Invoke-Expression "icacls $XSTOREDB_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
+Invoke-Expression "icacls $XENV_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
+Invoke-Expression "icacls $UPDATE_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
+Invoke-Expression "icacls $BACKUP_DIR /grant '*S-1-5-11:(OI)(CI)RXM' /t /c /inheritance:e"
