@@ -1,19 +1,30 @@
-name: Deploy
+name: Deploy to test
 
 on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: 'Name of version  (ie 5.5.0)'
+        description: 'Customer build version'
+        required: true
+      releaseName:
+        description: 'XStore version'
         required: true
       branchName:
         description: 'Name of branch to deploy'
         required: true
       destinationEnv:
+        type: choice
         description: 'Name of deploy destination Environment'
+        options: 
+        - DEV
+        - TEST
         required: true
       installationType:
-        description: 'Type of installation (Clean, Update)'
+        type: choice
+        description: 'Type of installation'
+        options: 
+        - install
+        - update
         required: true
         
 jobs:
@@ -21,100 +32,197 @@ jobs:
     runs-on: ubuntu-latest
     
     outputs:
-      url: ${{ steps.url.outputs.URL }}
       artifact: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}
     
-    steps:
+    steps:      
       - name: Set current artifact name
         id: current-artifact
         shell: bash
         run: |
-              echo "::set-output name=CURRENT_ARTIFACT::$(echo XStore_${{ github.event.inputs.branchName }}_${{ github.event.inputs.versionName }})"
-      
-      - name: Get latest artifact id
-        id: max_id
-        shell: bash
-        if: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }} != "XStore__"
-        run: |
-              echo "::set-output name=MAX_ID::$(curl -fs https://api.github.com/repos/${{github.repository}}/actions/artifacts |
-              jq '[ .artifacts[] | select(.name == "${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }}" and .expired == false) | .id ] | max')
-              
-      - name: Check Artifact name
-        if: ${{ steps.current-artifact.outputs.CURRENT_ARTIFACT }} == "XStore__"
-        run: |
-              echo "Check the Artifact name: it could be unacceptable value"
-              exit 1
-              
-      - name: Get lastest artifact url
-        id: url
-        shell: bash
-        if: ${{ steps.max_id.outputs.MAX_ID }} != ""
-        run: |
-              echo "::set-output name=URL::$(curl -fs https://api.github.com/repos/${{github.repository}}/actions/artifacts |
-              jq '.artifacts[] | select(.id == ${{ steps.max_id.outputs.MAX_ID }} and .expired == false) | .archive_download_url')
-              
-      - name: Check Artifact ID
-        if: ${{ steps.max_id.outputs.MAX_ID }} == "" || ${{ steps.url.outputs.URL }} == ""
-        run: |
-              echo "Check the Artifact name: it could be unacceptable value"
-              echo "Check the Artifacts list: the Artifact you are looking for could not exist"
-              exit 1
-              
-      - name: Check installation type
-        if: ${{ github.event.inputs.installationType }} != "Clean" && ${{ github.event.inputs.installationType }} != "Update"
-        run: |
-              echo "Check the Installation Type input: value not accepted"
-              exit 1
-      
-  DeployXOffice:
-    runs-on: ubuntu-latest
-    needs: CheckConfigDeploy
-    
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          lfs: 'true'
-      
-      - name: Download Artifact
-        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
-        shell: bash
-        run: |
-              #!/bin/bash
-              mkdir ./output
-              cd ./output
-              curl -u username[:{personalaccesstoken}] -o "${{needs.CheckConfigDeploy.outputs.artifact}}.zip" "${{needs.CheckConfigDeploy.outputs.url}}"
-              
-#      - name: Deploy XOffice
-#        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
+              echo "::set-output name=CURRENT_ARTIFACT::$(echo XStore_${{ github.event.inputs.branchName }}_${{ github.event.inputs.releaseName }}_${{ github.event.inputs.versionName }})"
+                      
+#  DeployXOffice:
+#    runs-on: [self-hosted, XOffice, Dev]
+#    needs: CheckConfigDeploy
+#    
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          ref: ${{ github.event.inputs.branchName }}
+#          lfs: 'true'
+#
+#      - name: Download Artifact
+#        id: download
 #        shell: bash
-#        run: .\shell_scripts\xo_setup.sh ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ github.event.inputs.destinationEnv }}
-      
+#        run: |
+#            LISTWF="gh run list -w \"Build workflow\" | grep success | cut -d$'\t' -f7"
+#            RUNID=0
+#            
+#            for line in $(eval "$LISTWF"); do
+#              echo "check $line workflow..."
+#              find=$(gh run view $line | grep ${{needs.CheckConfigDeploy.outputs.artifact}} > found.txt || true)
+#              if [ -s found.txt ]; then
+#            	  echo "workflow found"
+#                rm -f found.txt
+#                RUNID=$line
+#            	  break;
+#              else
+#                rm -f found.txt
+#              fi
+#            done
+#            
+#            if [ $RUNID -ne 0 ]; then
+#              echo "clean download directory"
+#              rm -rf /u01/deploy/download
+#              echo "downloading artifact in /u01/deploy/download..."
+#              gh run download $RUNID --dir "/u01/deploy/download"
+#              echo "artifact downloaded in /u01/deploy/download!"
+#              ls -al /u01/deploy/download
+#            fi
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.SYMPHONY_AMPLIFONORG_ACTIONSECRET }}
+#              
+#      - name: Deploy XOffice
+#        if: ${{ success() }}
+#        shell: bash
+#        run: |
+#            echo "::group::COPY AND SETUP SCRIPT"
+#            cp -f ${{ github.workspace }}/deploy_scripts/wlst.deploy.py /u01/deploy/script
+#            cp -f ${{ github.workspace }}/deploy_scripts/wlst.stopserver.py /u01/deploy/script
+#            chmod +x ${{ github.workspace }}/deploy_scripts/xo.setup.sh
+#            echo "::endgroup::"
+#            echo "::group::LAUNCH SCRIPT"
+#            if [ "${{ github.event.inputs.destinationEnv }}" = "DEV" ]; then
+#              ${{ github.workspace }}/deploy_scripts/xo.setup.sh ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ secrets.DBALIAS_DEV }} ${{ secrets.DBCENTER_DEV_USER }} ${{ secrets.DBCENTER_DEV_PSW }} ${{ secrets.DBADMIN_DEV_USER }} ${{ secrets.DBADMIN_DEV_PSW }} ${{ secrets.WLST_DEV_USER }} ${{ secrets.WLST_DEV_PSW }}
+#            elif [ "${{ github.event.inputs.destinationEnv }}" = "TEST" ]; then
+#              ${{ github.workspace }}/deploy_scripts/xo.setup.sh ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ secrets.DBALIAS_TEST }} ${{ secrets.DBCENTER_TEST_USER }} ${{ secrets.DBCENTER_TEST_PSW }} ${{ secrets.DBADMIN_TEST_USER }} ${{ secrets.DBADMIN_TEST_PSW }} ${{ secrets.WLST_TEST_USER }} ${{ secrets.WLST_TEST_PSW }}
+#            else
+#              echo "Error: Destination ENV not valid."
+#              exit 2
+#            fi
+#            echo "::endgroup::"
+#            
+#      - name: Check Applications Deployment
+#        if: ${{ success() }}
+#        shell: bash
+#        run: |
+#            echo "::group::SETUP SCRIPT"
+#            chmod +x ${{ github.workspace }}/deploy_scripts/xo.checkapp.sh
+#            echo "::endgroup::"
+#            echo "::group::LAUNCH SCRIPT"
+#            if [ "${{ github.event.inputs.destinationEnv }}" = "DEV" ]; then
+#              ${{ github.workspace }}/deploy_scripts/xo.checkapp.sh ${{ secrets.XCENTERCHECK_DEV_USER }} ${{ secrets.XCENTERCHECK_DEV_PSW }} ${{ secrets.XADMINCHECK_DEV_USER }} ${{ secrets.XADMINCHECK_DEV_PSW }}
+#            elif [ "${{ github.event.inputs.destinationEnv }}" = "TEST" ]; then
+#              ${{ github.workspace }}/deploy_scripts/xo.checkapp.sh ${{ secrets.XCENTERCHECK_TEST_USER }} ${{ secrets.XCENTERCHECK_TEST_PSW }} ${{ secrets.XADMINCHECK_TEST_USER }} ${{ secrets.XADMINCHECK_TEST_PSW }}
+#            else
+#              echo "Error: Destination ENV not valid."
+#              exit 2
+#            fi
+#            echo "::endgroup::"
+            
   DeployXStore:
-    runs-on: windows-latest
-    needs: [CheckConfigDeploy, DeployXOffice]
+    runs-on: [self-hosted, Xstore, Dev]
+    needs: [CheckConfigDeploy] #, DeployXOffice]
     
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Configuration repo
+        uses: actions/checkout@v2
         with:
-           lfs: 'true'
-      
-      - name: Download Artifact
-        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
+          repository: Amplifon-Org/Symphony-OracleXstore-Configuration
+          token: ${{ secrets.SYMPHONY_AMPLIFONORG_ACTIONSECRET }}
+          ref: dev
+
+      - name: Copy configuration files
+        if: ${{ success() }}
         shell: powershell
-        run: |             
-             $Token = 'MattMod:${{ secrets.PAT_AMP }}'
-             $Base64Token = [System.Convert]::ToBase64String([char[]]$Token);
-             $Headers = @{
-                Authorization = 'Basic {0}' -f $Base64Token;
-             }
-             Invoke-WebRequest -Headers $Headers -Uri ${{needs.CheckConfigDeploy.outputs.url}} -Method Get -OutFile "${{needs.CheckConfigDeploy.outputs.artifact}}.zip"
-        
-#      - name: Deploy with PowerShell
-#        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
-#        shell: powershell
-#        run: .\bat_scripts\xs_setup.bat ${{needs.CheckConfigDeploy.outputs.artifact}} ${{ github.event.inputs.installationType }} ${{ github.event.inputs.destinationEnv }}
-#      
-#      - name: XUnit Test with PowerShell
-#        if: ${{needs.CheckConfigDeploy.outputs.url}} != ""
-#        shell: powershell
-#        run: .\bat_scripts\xunit_test.bat # "./bat_scripts/test.bat" also can work
+        run: |
+            $hostname = & hostname
+            Copy-Item "..\Symphony-OracleXstore\config\$hostname.properties" -Destination "C:\posinstaller\xstore"
+            Copy-Item "..\Symphony-OracleXstore\config\$hostname.properties" -Destination "C:\posinstaller\xenvironment"
+            Copy-Item "..\Symphony-OracleXstore\config\xstore\xstore.mapping.properties" -Destination "C:\posinstaller\xstore"
+            Copy-Item "..\Symphony-OracleXstore\config\xenvironment\xenvironment.mapping.properties" -Destination "C:\posinstaller\xenvironment"
+          
+      - name: Checkout MNTs repo
+        if: ${{ success() }}
+        uses: actions/checkout@v2
+        with:
+          repository: Amplifon-Org/Symphony-OracleXstore-MNTFiles
+          token: ${{ secrets.SYMPHONY_AMPLIFONORG_ACTIONSECRET }}
+          ref: dev
+
+      - name: Copy MNT files
+        if: ${{ success() }}
+        shell: powershell
+        run: |
+            $key = 'dtv.location.StoreNumber'
+            $hostname = & hostname
+            $HOSTNAME_FILE_LOCATION = "C:\posinstaller\xstore\$hostname.properties"
+            $host_ht = ConvertFrom-StringData (Get-Content -Raw $HOSTNAME_FILE_LOCATION)
+            $storeNumber = $host_ht[$key]
+            $mnt = "store_"+"$storeNumber"+"_${{ github.event.inputs.installationType }}"
+            Copy-Item "..\Symphony-OracleXstore\config\$mnt.zip" -Destination "C:\posinstaller\mnt"
+      - name: Checkout OracleXStore repo
+        if: ${{ success() }}
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branchName }}
+          lfs: 'true'
+
+      - name: Download Artifact
+        if: ${{ success() }}
+        shell: powershell
+        run: | 
+            $wf = gh run list -w "Build workflow" | Select-String -Pattern "success"
+            $runid = 0
+            foreach ($line in $wf) {
+              $fields =  $line.ToString().Split("`t")
+              echo "check $($fields[6]) workflow..."
+              $art = gh run view $fields[6] | Select-String -Pattern ${{needs.CheckConfigDeploy.outputs.artifact}}
+              if ($art.length -gt 0) {
+                $runid = $fields[6]
+                break
+              }
+            }
+    
+            if ( $runid -ne 0 ) {
+              echo "clean download directory"
+              if (Test-Path C:\posinstaller\artifacts\*) {
+                Get-ChildItem -Path C:\posinstaller\artifacts -Recurse -Force | Remove-Item -Recurse -Force
+              }
+              echo "downloading artifact in C:\posinstaller\artifacts ..."
+              gh run download $runid --dir "C:\posinstaller\artifacts"
+              echo "artifact downloaded in C:\posinstaller\artifacts !"
+              Get-ChildItem -Path C:\posinstaller\artifacts
+            } else {
+              Write-Error "Artifact not found. Download FAILED!"
+            }
+            
+            $XVERSION = "${{ github.event.inputs.releaseName }}"
+            $CUSTVERSION = "${{ github.event.inputs.versionName }}"
+            $ARTIFACT = "${{needs.CheckConfigDeploy.outputs.artifact}}"
+            $REPXVERSION = $XVERSION.replace('.', '_')
+            $REPCUSTVERSION = $CUSTVERSION.replace('.', '_')
+            $path = "C:\posinstaller\artifacts\$ARTIFACT\OracleRetailXstorePointofService_$REPXVERSION"+"_AMP_$REPCUSTVERSION.zip"
+            Move-Item -Path $path -Destination C:\posinstaller\artifacts
+            Remove-Item -path C:\posinstaller\artifacts\$ARTIFACT -recurse -Force
+        env:
+          GITHUB_TOKEN: ${{ secrets.SYMPHONY_AMPLIFONORG_ACTIONSECRET }}
+            
+      - name: Deploy with PowerShell
+        if: ${{ success() }}
+        shell: powershell
+        run: ${{ github.workspace }}\deploy_scripts\xs.deploy.ps1 ${{ github.event.inputs.installationType }} ${{ github.event.inputs.releaseName }} ${{ github.event.inputs.versionName }}
+
+      - name: XStore App permissions update
+        if: ${{ success() }}
+        shell: powershell
+        run: ${{ github.workspace }}\deploy_scripts\permissions\update.permissions.ps1
+      
+      - name: Clean Up posinstaller directories
+        if: ${{ always() }}
+        shell: powershell
+        run: |
+            if (Test-Path C:\posinstaller\artifacts\*) { Get-ChildItem -Path C:\posinstaller\artifacts -Recurse -Force | Remove-Item -Recurse -Force }
+            if (Test-Path C:\posinstaller\mnt\*) { Get-ChildItem -Path C:\posinstaller\mnt -Recurse -Force | Remove-Item -Recurse -Force }
+            if (Test-Path C:\posinstaller\xenvironment\*) { Get-ChildItem -Path C:\posinstaller\xenvironment -Recurse -Force | Remove-Item -Recurse -Force }
+            if (Test-Path C:\posinstaller\xstore\*) { Get-ChildItem -Path C:\posinstaller\xstore -Recurse -Force | Remove-Item -Recurse -Force }
